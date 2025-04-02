@@ -1,0 +1,64 @@
+;
+; A setup information (INF) file is a text file contains all of the information
+; that device installation components use to install a driver package on a device. 
+; Windows uses INF files to install the following components for a device:
+; - One or more drivers that support the device
+; - Device-specific configuration or settings to bring the device online.
+;
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = "ActivityMonitor"
+ClassGuid   = {b86dff51-a31e-4bac-b3cf-e8cfe75c9fc2}
+Provider    = %ProviderString%
+DriverVer   = 04/2/2025,1.0.0.0
+CatalogFile = fot.cat
+PnpLockdown = 1
+
+[DestinationDirs]
+fot.DriverFiles = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[SourceDisksFiles]
+fot.sys = 1,,
+
+[DefaultInstall.NTamd64]
+CopyFiles = fot.DriverFiles;, fot.UserFiles
+
+[DefaultInstall.NTamd64.Services]
+AddService = %ServiceName%,,fot.Service
+
+[fot.Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDescription%
+ServiceBinary  = %13%\fot.sys
+ServiceType    = 2 ;    SERVICE_FILE_SYSTEM_DRIVER
+StartType      = 3 ;    SERVICE_DEMAND_START
+ErrorControl   = 1 ;    SERVICE_ERROR_NORMAL%
+LoadOrderGroup = "FSFilter Activity Monitor"
+AddReg         = fot.AddRegistry
+Dependencies   = FltMgr
+
+[fot.AddRegistry]
+HKR,"Parameters","SupportedFeatures",0x00010001,0x3
+HKR,"Parameters\Instances","DefaultInstance",0x00000000,%DefaultInstance%
+HKR,"Parameters\Instances\"%Instance1.Name%,"Altitude",0x00000000,%Instance1.Altitude%
+HKR,"Parameters\Instances\"%Instance1.Name%,"Flags",0x00010001,%Instance1.Flags%
+
+[fot.DriverFiles]
+%DriverName%.sys
+
+[Strings]
+ProviderString     = "nbyaman"
+DiskName           = "fot Installation Disk"
+ServiceDescription = "File operation tracker mini-filter driver"
+ServiceName        = "fot"
+DriverName         = "fot"
+
+DefaultInstance    = "File operation tracker  - Top Instance"
+Instance1.Name     = "File operation tracker  - Middle Instance"
+Instance1.Altitude = "370000"
+Instance1.Flags    = 0x1 ; Suppress automatic attachments
+
