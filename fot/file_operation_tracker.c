@@ -18,8 +18,7 @@ NTSTATUS DriverEntry(
 		{IRP_MJ_READ,   0, FOTPreOperationCallback, NULL},
 		{IRP_MJ_WRITE,  0, FOTPreOperationCallback, NULL},
 		{IRP_MJ_CLEANUP,0, FOTPreOperationCallback, NULL}, //file handle closure
-		{IRP_MJ_SET_INFORMATION,   0, FOTPreOperationCallback, NULL}, // delete, rename
-		{IRP_MJ_DIRECTORY_CONTROL, 0, FOTPreOperationCallback, NULL}, // move, rename
+		{IRP_MJ_SET_INFORMATION,   0, FOTPreOperationCallback, NULL}, // delete, rename, move
 		{IRP_MJ_OPERATION_END}
 	};
 
@@ -111,11 +110,11 @@ FLT_PREOP_CALLBACK_STATUS FOTPreOperationCallback(
 	UNREFERENCED_PARAMETER(CompletionContext);
 
 	PFLT_FILE_NAME_INFORMATION FileNameInfo;
-	NTSTATUS status = FltGetFileNameInformation(Data,
-		FLT_FILE_NAME_NORMALIZED,
-		&FileNameInfo);
+	NTSTATUS status = FltGetFileNameInformation(Data, FLT_FILE_NAME_NORMALIZED, &FileNameInfo);
 	if (NT_SUCCESS(status)) {
+
 		FltParseFileNameInformation(FileNameInfo);
+
 		switch (Data->Iopb->MajorFunction) {
 		case IRP_MJ_CREATE:
 			break;
@@ -137,6 +136,7 @@ FLT_PREOP_CALLBACK_STATUS FOTPreOperationCallback(
 			FILE_INFORMATION_CLASS FileInfoClass = Data->Iopb->Parameters.SetFileInformation.FileInformationClass;
 			if (FileInfoClass == FileDispositionInformation ||
 				FileInfoClass == FileDispositionInformationEx) {
+
 				PFILE_DISPOSITION_INFORMATION FileInformation = (PFILE_DISPOSITION_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
 				if (FileInformation->DeleteFile)
 				{
@@ -149,8 +149,21 @@ FLT_PREOP_CALLBACK_STATUS FOTPreOperationCallback(
 			}
 			else if (FileInfoClass == FileRenameInformation ||
 				FileInfoClass == FileRenameInformationEx) {
-				//PFILE_RENAME_INFORMATION FileInformation = (PFILE_RENAME_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
-				DbgPrint("File renamed - %wZ\n", &FileNameInfo->Name);
+
+				PFILE_RENAME_INFORMATION FileInformation = (PFILE_RENAME_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
+				if (!FileInformation || FileInformation->FileNameLength == 0) {
+					return FLT_PREOP_SUCCESS_NO_CALLBACK;
+				}
+				
+				if (FileInformation->RootDirectory == NULL) {
+					// Renaming within the same directory
+					DbgPrint("File renamed - %wZ\n", &FileNameInfo->Name);
+				}
+				else {
+					// Moving to a different directory
+					DbgPrint("File moved - %wZ\n", &FileNameInfo->Name);
+
+				}
 			}
 			break;
 		}
